@@ -54,7 +54,7 @@ Service Type: Web Service.
 Root Directory: Set to server.
 Environment: Add all .env keys in the dashboard settings.
 
-/* NOTE ON IMAGE STORAGE:
+NOTE ON IMAGE STORAGE:
 We are using locally downloaded images in the 'public' folder rather than 
 storing binary image data (BLOBs) directly in the PostgreSQL database.
 
@@ -64,7 +64,7 @@ REASONS:
 2. Scalability: Database size stays small, making backups and migrations easier.
 3. Best Practice: In production, these would typically be hosted on a CDN 
    (like Cloudinary or AWS S3) and only their URLs would be stored in the DB.
-*/
+
 
 👨‍💻 Developer
 Nishtha Sikri
