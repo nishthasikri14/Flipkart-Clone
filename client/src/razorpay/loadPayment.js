@@ -1,74 +1,78 @@
-import axios from 'axios';
-const url = 'http://localhost:8000';
+import axios from "axios";
 
-export const loadRazorpay = (price) => {
-    // FIX 1: Convert to Number safely and multiply by 100 for Paise
-    const orderAmount = Number(price) * 100; 
+const URL = "https://flipkart-clone-hyap.onrender.com";
 
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    
-    script.onerror = () => {
-        alert('Razorpay SDK failed to load. Are you online?');
-    };
+export const loadRazorpay = async (price) => {
+  const orderAmount = Number(price) * 100;
 
-    script.onload = async () => {
-        try {
-            // Backend call to create order
-            const result = await axios.post(`${url}/create-order`, {
-                amount: orderAmount,
+  const script = document.createElement("script");
+  script.src = "https://checkout.razorpay.com/v1/checkout.js";
+  script.async = true;
+
+  script.onerror = () => {
+    alert("Razorpay SDK failed to load. Check your internet connection.");
+  };
+
+  script.onload = async () => {
+    try {
+
+      // create order from backend
+      const orderResponse = await axios.post(`${URL}/create-order`, {
+        amount: orderAmount,
+      });
+
+      const { amount, id: order_id, currency } = orderResponse.data;
+
+      // get razorpay key
+      const keyResponse = await axios.get(`${URL}/get-razorpay-key`);
+      const razorpayKey = keyResponse.data.key;
+
+      const options = {
+        key: razorpayKey,
+        amount: amount.toString(),
+        currency: currency,
+        name: "Flipkart Clone",
+        description: "Payment for your order",
+        order_id: order_id,
+
+        handler: async function (response) {
+          try {
+
+            await axios.post(`${URL}/pay-order`, {
+              amount: orderAmount,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpaySignature: response.razorpay_signature,
             });
-            
-            const { amount, id: order_id, currency } = result.data;
 
-            // Getting API Key from backend
-            const { data: { key: razorpayKey } } = await axios.get(`${url}/get-razorpay-key`);
+            const paymentId = response.razorpay_payment_id;
 
-            const options = {
-                key: razorpayKey,
-                amount: amount.toString(),
-                currency: currency,
-                name: 'Flipkart Clone',
-                description: 'Payment for your order',
-                order_id: order_id,
-                handler: async function (response) {
-                    try {
-                        // Verifying payment on backend
-                        const paymentResult = await axios.post(`${url}/pay-order`, {
-                            amount: orderAmount,
-                            razorpayPaymentId: response.razorpay_payment_id,
-                            razorpayOrderId: response.razorpay_order_id,
-                            razorpaySignature: response.razorpay_signature,
-                        });
+            window.location.href = `/success?id=${paymentId}`;
 
-                        // FIX 2: Success Redirection with Order ID
-                        // Alert ki jagah hum seedhe Success page par bhejenge
-                        const paymentId = response.razorpay_payment_id;
-                        window.location.href = `/success?id=${paymentId}`;
+          } catch (error) {
+            alert("Payment verification failed: " + error.message);
+          }
+        },
 
-                    } catch (payErr) {
-                        alert("Payment verification failed at backend: " + payErr.message);
-                    }
-                },
-                prefill: {
-                    name: 'Guest User',
-                    email: 'user@example.com',
-                    contact: '9999999999',
-                },
-                theme: {
-                    color: '#2874f0', // Flipkart Blue
-                },
-            };  
-            
-            const paymentObject = new window.Razorpay(options);
-            paymentObject.open();
+        prefill: {
+          name: "Guest User",
+          email: "user@example.com",
+          contact: "9999999999",
+        },
 
-        } catch (err) {
-            // FIX 3: Detailed error for Status 500
-            console.error("Payment Error:", err);
-            alert("Status 500: Backend server is not responding correctly. Check terminal.");
-        }
-    };
-    
-    document.body.appendChild(script);
-}
+        theme: {
+          color: "#2874f0",
+        },
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.open();
+
+    } catch (error) {
+      console.error("Payment Error:", error);
+      alert("Backend server error while creating order.");
+    }
+  };
+
+  document.body.appendChild(script);
+};
